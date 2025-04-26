@@ -1,36 +1,19 @@
 const express = require("express");
+const { UserAuth, AdminAuth } = require("../middlewares/Auth");
 const app = express();
 const port = 7777;
 
-// app.get('/', (req, res) => {
-//     res.send('Home page');
-// })
+app.use("/admin", AdminAuth );
+app.use("/user", UserAuth );
 
-// app.get('/test', (req, res) => {
-//     res.send('Test page');
-// })
-
-// this will only handle the GET method
-app.get("/hellow", (req, res) => {
-  res.send({ username: "John Doe", age: 30 });
+app.get("/admin/login", (req, res) => {
+  res.send("Data sent to the admin login page");
 });
 
-app.get("/hellow", (req, res) => {
-  res.send("Hello World!");
-});
-
-app.post("/hellow", (req, res) => {
-  res.send("data posted successfully");
-});
-
-app.delete("/hellow", (req, res) => {
-  res.send("data deleted successfully");
-});
-
-//this will match all the HTTP API calls to Test
-app.use("/test", (req, res, next) => {
-  console.log("Test middleware");
-});
+app.get("/user/login", (req, res) => {
+  res.send("Data sent to the user login page");
+}
+);  
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

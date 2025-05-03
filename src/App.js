@@ -3,16 +3,37 @@ const app = express();
 const port = 7777;
 const connectDB = require("./config/Database");
 const User = require("./models/user");
+const { validateSignUpdata } = require("./utils/Validation");
+const bcrypt = require('bcrypt');
 
 // Middleware to parse URL-encoded data
 app.use(express.json());
 
 //POST-API Middleware to parse JSON data
 app.post("/signup", async (req, res) => {
+  //validate the request body using the validation function
+  const validation = validateSignUpdata(req);
+  if (validation?.error) {
+    return res.status(400).send(validation.error); // ✅ handle validation error early
+  }
+  //encrypt the password using bcrypt
+  const HashPassword = await bcrypt.hash(req.body.password, 10);
+  console.log("HashPassword", HashPassword);
   const user = new User(req.body);
   console.log("data", user);
 
   try {
+    validateSignUpdata(req);
+   const user = new User({
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      emailId: req.body.emailId,
+      age: req.body.age,
+      gender: req.body.gender,
+      photoURL: req.body.photoURL,
+      password: HashPassword, // Use the hashed password
+   });
+
     await user.save();
     res.status(201).send("User created successfully!");
   } catch (error) {
@@ -68,10 +89,26 @@ app.get("/userID", async (req, res) => {
 });
 
 //delete-API Middleware to delete user by emailId
+// app.delete("/user", async (req, res) => {
+//   const userEmail = req.body.emailId;
+//   try {
+//     const user = await User.findOneAndDelete({ emailId: userEmail });
+//     if (!user) {
+//       res.status(404).send("User not found!");
+//     } else {
+//       res.status(200).send("User deleted successfully!");
+//       console.log("User deleted:", user);
+//     }
+//   } catch (error) {
+//     res.status(500).send("Error deleting user: " + error.message);
+//   }
+// })
+
+//delete-API Middleware to delete user by UserName
 app.delete("/user", async (req, res) => {
-  const userEmail = req.body.emailId;
+  const userName = req.body.userName;
   try {
-    const user = await User.findOneAndDelete({ emailId: userEmail });
+    const user = await User.deleteMany({ firstName: userName });
     if (!user) {
       res.status(404).send("User not found!");
     } else {
@@ -84,22 +121,38 @@ app.delete("/user", async (req, res) => {
 })
 
 
- app.patch("/user", async (req, res) => {
-  const UserID = req.body.UserID;
-  const userData = req.body;
+// PATCH-API Middleware to update user 
+app.patch("/user", async (req, res) => {
+  const { UserID, ...userData } = req.body;
+
+  
+
   try {
-    const user = await User.findOneAndUpdate({ _id: UserID}, userData);
-    console.log("User updated:", user);
+  
+    const allowedUpdates = ["firstName", "lastName", "password", "gender", "age", "photoURL"];
+  const updateData = {};
+
+  for (const key of allowedUpdates) {
+    if (userData[key] !== undefined) {
+      updateData[key] = userData[key];
+    }
+  }
+    const user = await User.findOneAndUpdate(
+      { _id: UserID },
+      updateData, // ✅ only allowed fields are passed
+      { new: true, runValidators: true }
+    );
+
     if (!user) {
       res.status(404).send("User not found!");
     } else {
       res.status(200).send("User updated successfully!");
     }
-  }
-  catch (error) {
+  } catch (error) {
     res.status(500).send("Error updating user: " + error.message);
   }
 });
+
 
 // app.patch("/user", async (req, res) => {
 //   const { userId, updateData } = req.body;

@@ -5,7 +5,7 @@ const userSchema = new mangoose.Schema(
   {
     firstName: {
       type: String,
-      required: true,
+    //  required: true,
       minlength: 2,
       maxlength: 20,
       trim: true,
@@ -23,17 +23,20 @@ const userSchema = new mangoose.Schema(
       unique: false,
       lowercase: true,
       trim: true,
-      validate(value) {
-        if (!validator.isEmail(value)) {
-          throw new Error("Invalid email address");
-        }
+      immutable: true,
+      validate: {
+        validator: function (value) {
+          return validator.isEmail(value);
+        },
+        message: props => `${props.value} is not a valid email address`
       },
+     
     },
     password: {
       type: String,
       required: true,
       minlength: 4,
-      maxlength: 20,
+      maxlength: 100,
       trim: true,
       validate(value) {
         if (!validator.isStrongPassword(value)) {

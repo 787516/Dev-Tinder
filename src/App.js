@@ -4,12 +4,12 @@ const port = 7777;
 const connectDB = require("./config/Database");
 const User = require("./models/user");
 const { validateSignUpdata } = require("./utils/Validation");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 
 // Middleware to parse URL-encoded data
 app.use(express.json());
 
-//POST-API Middleware to parse JSON data
+//POST-API Middleware to parse JSON data SIGNUP
 app.post("/signup", async (req, res) => {
   //validate the request body using the validation function
   const validation = validateSignUpdata(req);
@@ -24,7 +24,7 @@ app.post("/signup", async (req, res) => {
 
   try {
     validateSignUpdata(req);
-   const user = new User({
+    const user = new User({
       firstName: req.body.firstName,
       lastName: req.body.lastName,
       emailId: req.body.emailId,
@@ -32,12 +32,31 @@ app.post("/signup", async (req, res) => {
       gender: req.body.gender,
       photoURL: req.body.photoURL,
       password: HashPassword, // Use the hashed password
-   });
+    });
 
     await user.save();
     res.status(201).send("User created successfully!");
   } catch (error) {
     res.status(400).send("Error creating user: " + error.message);
+  }
+});
+
+//POST-API Middleware to parse JSON data LOGIN
+app.post("/login", async (req, res) => {
+  const { emailId, password } = req.body;
+  try {
+    const user = await User.findOne({ emailId });
+    if (!user) {
+      return res.status(404).send("User not found!");
+    }
+    const isPassIsValid = await bcrypt.compare(password, user.password);
+    if (isPassIsValid) {
+      res.status(200).send("Login successful!");
+    } else {
+      res.status(401).send("Invalid password!");
+    }
+  } catch (error) {
+    res.status(500).send("Error logging in: " + error.message);
   }
 });
 
@@ -118,25 +137,28 @@ app.delete("/user", async (req, res) => {
   } catch (error) {
     res.status(500).send("Error deleting user: " + error.message);
   }
-})
+});
 
-
-// PATCH-API Middleware to update user 
+// PATCH-API Middleware to update user
 app.patch("/user", async (req, res) => {
   const { UserID, ...userData } = req.body;
 
-  
-
   try {
-  
-    const allowedUpdates = ["firstName", "lastName", "password", "gender", "age", "photoURL"];
-  const updateData = {};
+    const allowedUpdates = [
+      "firstName",
+      "lastName",
+      "password",
+      "gender",
+      "age",
+      "photoURL",
+    ];
+    const updateData = {};
 
-  for (const key of allowedUpdates) {
-    if (userData[key] !== undefined) {
-      updateData[key] = userData[key];
+    for (const key of allowedUpdates) {
+      if (userData[key] !== undefined) {
+        updateData[key] = userData[key];
+      }
     }
-  }
     const user = await User.findOneAndUpdate(
       { _id: UserID },
       updateData, // ✅ only allowed fields are passed
@@ -153,7 +175,6 @@ app.patch("/user", async (req, res) => {
   }
 });
 
-
 // app.patch("/user", async (req, res) => {
 //   const { userId, updateData } = req.body;
 //   try {
@@ -169,8 +190,6 @@ app.patch("/user", async (req, res) => {
 //     res.status(500).send("Error updating user: " + error.message);
 //   }
 // });
-
-   
 
 connectDB()
   .then(() => {

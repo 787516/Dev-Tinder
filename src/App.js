@@ -5,9 +5,13 @@ const connectDB = require("./config/Database");
 const User = require("./models/user");
 const { validateSignUpdata } = require("./utils/Validation");
 const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const { AuthMiddleware } = require("./middlewares/Auth");
 
 // Middleware to parse URL-encoded data
 app.use(express.json());
+app.use(cookieParser());
 
 //POST-API Middleware to parse JSON data SIGNUP
 app.post("/signup", async (req, res) => {
@@ -51,6 +55,12 @@ app.post("/login", async (req, res) => {
     }
     const isPassIsValid = await bcrypt.compare(password, user.password);
     if (isPassIsValid) {
+      // Set a cookie with the random token
+      // res.cookie("Token", "lkjhgfxcvhjbknmlnbcdrtfgbnjkmkjhvgcfdr");
+      // create a Token for the user
+      var token = jwt.sign({ _id: user._id }, "Smp346##", {expiresIn: "1d"}); // Set expiration time to 1 hour
+      res.cookie("token", token);
+      console.log("Token", token);
       res.status(200).send("Login successful!");
     } else {
       res.status(401).send("Invalid password!");
@@ -58,6 +68,32 @@ app.post("/login", async (req, res) => {
   } catch (error) {
     res.status(500).send("Error logging in: " + error.message);
   }
+});
+
+//GET-API for getting profile data
+app.get("/profile", async (req, res) => {
+  const { token } = req.cookies;
+  if (!token) {
+    return res.status(401).send("Unauthorized: No token provided");
+  }
+  try {
+    const decoded = jwt.verify(token, "Smp346##");
+    const { _id } = decoded;
+    console.log("decodeMessages", decoded);
+    const user = await User.findById(_id);
+    res.send(user);
+    console.log("User found:", user);
+    res.status(200).send("Profile access granted");
+  } catch (err) {
+    res.status(401).send("Unauthorized: Invalid token");
+  }
+});
+
+// POST-API Middleware to send Connection Request
+app.post("/sendConnectionRequest", AuthMiddleware, async (req, res) => {
+  const user = req.user;
+  console.log("sendConnectionRequest : ", req.user.firstName);
+  res.send("Connection request sent successfully!");
 });
 
 //GET-API Middleware to get user by emailId
@@ -108,26 +144,10 @@ app.get("/userID", async (req, res) => {
 });
 
 //delete-API Middleware to delete user by emailId
-// app.delete("/user", async (req, res) => {
-//   const userEmail = req.body.emailId;
-//   try {
-//     const user = await User.findOneAndDelete({ emailId: userEmail });
-//     if (!user) {
-//       res.status(404).send("User not found!");
-//     } else {
-//       res.status(200).send("User deleted successfully!");
-//       console.log("User deleted:", user);
-//     }
-//   } catch (error) {
-//     res.status(500).send("Error deleting user: " + error.message);
-//   }
-// })
-
-//delete-API Middleware to delete user by UserName
 app.delete("/user", async (req, res) => {
-  const userName = req.body.userName;
+  const userEmail = req.body.emailId;
   try {
-    const user = await User.deleteMany({ firstName: userName });
+    const user = await User.findOneAndDelete({ emailId: userEmail });
     if (!user) {
       res.status(404).send("User not found!");
     } else {
@@ -138,6 +158,22 @@ app.delete("/user", async (req, res) => {
     res.status(500).send("Error deleting user: " + error.message);
   }
 });
+
+//delete-API Middleware to delete user by UserName
+// app.delete("/user", async (req, res) => {
+//   const userName = req.body.userName;
+//   try {
+//     const user = await User.deleteMany({ firstName: userName });
+//     if (!user) {
+//       res.status(404).send("User not found!");
+//     } else {
+//       res.status(200).send("User deleted successfully!");
+//       console.log("User deleted:", user);
+//     }
+//   } catch (error) {
+//     res.status(500).send("Error deleting user: " + error.message);
+//   }
+// });
 
 // PATCH-API Middleware to update user
 app.patch("/user", async (req, res) => {
